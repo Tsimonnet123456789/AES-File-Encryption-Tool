@@ -1,18 +1,17 @@
-import cryptography
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-import hashlib
 import os
 from Crypto.Cipher import AES
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Hash import SHA256
+from Crypto.Util.Padding import pad, unpad
 from Crypto.Util.Padding import pad
 from Crypto.Random import get_random_bytes
-import os
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
 if __name__ == '__main__':
     begin = 0
-    while begin != 1:
-
+    while begin != 100:
+        if(begin >0):
+            print("Type exit to leave or continue to keep using the tool")
+        begin+=1
         print("This tool provies AES encryption at rest")
         w5 = 0
         while (w5 != 1):
@@ -63,15 +62,12 @@ if __name__ == '__main__':
 
         # encode for a password
         if (key == "b" and st == "a"):
-            files_encrypted = 0
-            from Crypto.Cipher import AES
-            from Crypto.Util.Padding import pad
-            from Crypto.Random import get_random_bytes
-            import os
 
+
+            files_encrypted = 0
             password = input("Enter the password: ")
 
-            # set key size based on AES level
+            # set key size
             if en == "a":
                 key_size = 16
             elif en == "b":
@@ -79,65 +75,61 @@ if __name__ == '__main__':
             else:
                 key_size = 32
 
-            aes_key = password.encode().ljust(key_size, b'\0')[:key_size]
-
 
             def encrypt_file(filepath):
                 global files_encrypted
+
                 if not os.path.isfile(filepath):
                     print("File not found:", filepath)
-                    return
-                iv = get_random_bytes(16)
+                    return False
+
+                salt = get_random_bytes(16)
+                aes_key = PBKDF2(password, salt, dkLen=key_size, count=100000, hmac_hash_module=SHA256)
 
                 with open(filepath, "rb") as file:
                     data = file.read()
 
-                cipher = AES.new(aes_key, AES.MODE_CBC, iv)
-                encrypted_data = cipher.encrypt(pad(data, AES.block_size))
+                cipher = AES.new(aes_key, AES.MODE_GCM)
+                ciphertext, tag = cipher.encrypt_and_digest(data)
 
-                encrypted_file = filepath + ".enc"
+                out_file = filepath + ".enc"
 
-                with open(encrypted_file, "wb") as file:
-                    file.write(iv)
-                    file.write(encrypted_data)
+                with open(out_file, "wb") as file:
+                    file.write(salt)  # 16 bytes
+                    file.write(cipher.nonce)  # 16 bytes
+                    file.write(tag)  # 16 bytes
+                    file.write(ciphertext)
 
                 print("Encrypted:", filepath)
+                print("Saved as:", out_file)
+
                 files_encrypted += 1
+                return True
 
 
-
-
-
-            # --- FILE ---
-            # true key
+            # FILE
             if fl == "a":
-                filepath = input("Enter the absolute file path: ")
+                filepath = input("Enter file path: ").strip()
                 encrypt_file(filepath)
 
-            # --- FOLDER ---
+            # FOLDER
             elif fl == "b":
-                folderpath = input("Enter the folder path: ").strip()
+                folderpath = input("Enter folder path: ").strip()
 
                 if not os.path.isdir(folderpath):
                     print("Folder not found:", folderpath)
                 else:
-                    files_encrypted = 0
-
                     for root, dirs, files in os.walk(folderpath):
                         for name in files:
                             full_path = os.path.join(root, name)
 
                             if not full_path.endswith(".enc"):
                                 encrypt_file(full_path)
-                                files_encrypted += 1
-
-                    if files_encrypted == 0:
-                        print("No files were encrypted. The folder may be empty or all files are already encrypted.")
-                    else:
-                        print("Encrypted", files_encrypted, "file(s).")
 
             if files_encrypted > 0:
                 print("Encryption complete.")
+            else:
+                print("No files were encrypted.")
 
 
 
@@ -145,10 +137,7 @@ if __name__ == '__main__':
 
 
         if (key == "a"and st == "a"):
-            from Crypto.Cipher import AES
-            from Crypto.Util.Padding import pad
-            from Crypto.Random import get_random_bytes
-            import os
+
 
             # set key size based on AES level
             if en == "a":
@@ -235,15 +224,12 @@ if __name__ == '__main__':
 
         # decode for password
         if (key == "b" and st == "b"):
-            from Crypto.Cipher import AES
-            from Crypto.Util.Padding import unpad
-            import os
+
 
             files_decrypted = 0
-
             password = input("Enter the password: ")
 
-            # set key size based on AES level
+            # set key size
             if en == "a":
                 key_size = 16
             elif en == "b":
@@ -251,24 +237,26 @@ if __name__ == '__main__':
             else:
                 key_size = 32
 
-            aes_key = password.encode().ljust(key_size, b'\0')[:key_size]
 
             def decrypt_file(filepath):
                 global files_decrypted
 
                 if not os.path.isfile(filepath):
                     print("File not found:", filepath)
-                    return
+                    return False
 
                 try:
                     with open(filepath, "rb") as file:
-                        iv = file.read(16)
-                        encrypted_data = file.read()
+                        salt = file.read(16)  # must match encrypt
+                        nonce = file.read(16)
+                        tag = file.read(16)
+                        ciphertext = file.read()
 
-                    cipher = AES.new(aes_key, AES.MODE_CBC, iv)
-                    decrypted_data = unpad(cipher.decrypt(encrypted_data), AES.block_size)
+                    aes_key = PBKDF2(password, salt, dkLen=key_size, count=100000, hmac_hash_module=SHA256)
 
-                    # output file always ends with .dec
+                    cipher = AES.new(aes_key, AES.MODE_GCM, nonce=nonce)
+                    decrypted_data = cipher.decrypt_and_verify(ciphertext, tag)
+
                     output_file = os.path.splitext(filepath)[0] + ".dec"
 
                     with open(output_file, "wb") as file:
@@ -278,18 +266,21 @@ if __name__ == '__main__':
                     print("Saved as:", output_file)
 
                     files_decrypted += 1
+                    return True
 
                 except:
-                    print("Decryption failed:", filepath)
+                    print("Decryption failed (wrong password or file modified):", filepath)
+                    return False
 
-            # --- FILE ---
+
+            # FILE
             if fl == "a":
-                filepath = input("Enter the encrypted file path: ").strip()
+                filepath = input("Enter encrypted file path: ").strip()
                 decrypt_file(filepath)
 
-            # --- FOLDER ---
+            # FOLDER
             elif fl == "b":
-                folderpath = input("Enter the folder path: ").strip()
+                folderpath = input("Enter folder path: ").strip()
 
                 if not os.path.isdir(folderpath):
                     print("Folder not found:", folderpath)
@@ -301,11 +292,10 @@ if __name__ == '__main__':
                             if full_path.endswith(".enc"):
                                 decrypt_file(full_path)
 
-                    if files_decrypted == 0:
-                        print("No encrypted files were decrypted.")
-
             if files_decrypted > 0:
                 print("Decryption complete.")
+            else:
+                print("No files were decrypted.")
 
         if (key == "a" and st == "b"):
             from Crypto.Cipher import AES
