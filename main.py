@@ -1,17 +1,21 @@
+# ChatGPT assisted in the creation of the project
 import os
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA256
 from Crypto.Util.Padding import pad, unpad
-from Crypto.Util.Padding import pad
 from Crypto.Random import get_random_bytes
 
 if __name__ == '__main__':
     begin = 0
-    while begin != 100:
-        if(begin >0):
-            print("Type exit to leave or continue to keep using the tool")
-        begin+=1
+
+    while True:
+        if begin > 0:
+            end = input("Type 'exit' to leave or press Enter to continue: ").strip().lower()
+            if end == "exit":
+                break
+
+        begin += 1
         print("This tool provies AES encryption at rest")
         w5 = 0
         while (w5 != 1):
@@ -36,7 +40,7 @@ if __name__ == '__main__':
         while (w1 != 1):
             print("Do you wish to use a file or folder?\na:file\nb:folder")
 
-            fl = (input("enter the letter for the doucment type"))
+            fl = (input("enter the letter for the document type"))
             if (fl == "a" or fl == "b"):
                 w1 = 1
             else:
@@ -52,7 +56,7 @@ if __name__ == '__main__':
         if (key == "a" and st == "a"):
             w6 = 0
             while (w6 != 1):
-                print("You have chosen cryptographic key do you want\n a:the program to generate\nb: provide it in hexadecimal")
+                print("You have chosen cryptographic key do you want\na:the program to generate\nb: provide it in hexadecimal")
                 key2 = (input("enter the letter for the key"))
                 if (key2 == "a" or key2 == "b"):
                     w6 = 1
@@ -298,9 +302,7 @@ if __name__ == '__main__':
                 print("No files were decrypted.")
 
         if (key == "a" and st == "b"):
-            from Crypto.Cipher import AES
-            from Crypto.Util.Padding import unpad
-            import os
+
 
             # set key size based on AES level
             if en == "a":
