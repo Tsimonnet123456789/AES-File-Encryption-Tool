@@ -1,2 +1,3 @@
 ﻿# AES-File-Encryption-Tool
+This project is a Python-based encryption tool designed to securely encrypt and decrypt data at rest using AES encryption. The tool supports encrypting and decrypting single files, folders, multiple files, or multiple folders. Users can choose between using randomly generated cryptographic keys or password-based keys derived securely from a user password. The application supports AES-128, AES-192, and AES-256 encryption modes. When using cryptographic keys, users can either generate a secure random key through the program or provide their own hexadecimal key. The tool is designed to fully decrypt any data it encrypts, provided the correct key or password is supplied.
 
